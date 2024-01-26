@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Card, CardContent, Typography, Box, Dialog, DialogContent, DialogActions, Button, Rating } from '@mui/material';
-import axios from 'axios';
 
 const Watchlist = ({ watchlist, setWatchlist }) => {
   const [deleteIndex, setDeleteIndex] = useState(null);

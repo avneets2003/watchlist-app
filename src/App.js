@@ -4,7 +4,7 @@ import { AppBar, Toolbar, Typography } from '@mui/material';
 import AddToWatchlist from './pages/AddToWatchlist';
 import Watchlist from './pages/Watchlist';
 
-const Form = () => {
+const App = () => {
   const [watchlist, setWatchlist] = useState([]); // Define watchlist state
 
   return (
@@ -32,4 +32,4 @@ const Form = () => {
   );
 };
 
-export default Form;
+export default App;
