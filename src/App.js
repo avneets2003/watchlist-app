@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Link, Routes, Route } from 'react-router-dom';
-import { TextField, MenuItem, Button, AppBar, Toolbar, Typography, Dialog, DialogContent, Card, CardContent, DialogActions, Box, Autocomplete, CircularProgress } from '@mui/material';
+import { TextField, MenuItem, Button, AppBar, Toolbar, Typography, Dialog, DialogContent, Card, CardContent, DialogActions, Box, Autocomplete, CircularProgress, Rating } from '@mui/material';
 import axios from 'axios';
 
 const platforms = [
@@ -78,8 +78,11 @@ const Form = () => {
       const movieId = response.data.results[0].id;
       const movieDetails = await axios.get(`https://api.themoviedb.org/3/movie/${movieId}?api_key=0d9082f38437d0ce2713e712e4b7fef4`);
       const posterPath = movieDetails.data.poster_path;
+      const rating = movieDetails.data.vote_average;
+      const creditsResponse = await axios.get(`https://api.themoviedb.org/3/movie/${movieId}/credits?api_key=0d9082f38437d0ce2713e712e4b7fef4`);
+      const cast = creditsResponse.data.cast?.slice(0, 3).map(actor => actor.name) || [];
 
-      const newMovie = { title, platform, genre, link, posterPath };
+      const newMovie = { title, platform, genre, link, posterPath, rating, cast };
       setWatchlist([...watchlist, newMovie]);
       setMessage(`${title} added to the watchlist.`);
       setOpenDialog(true);
@@ -221,9 +224,11 @@ const Form = () => {
                       )}
                       <Typography variant="h5" style={{ marginBottom: '10px' }}>
                         <a href={movie.link.startsWith('http') ? movie.link : `http://${movie.link}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', color: '#000' }}>{movie.title}</a>
+                        <Rating name="movie-rating" value={Math.round(movie.rating) / 2} precision={0.5} readOnly size="small" style={{ marginLeft: '5px' }} />
                       </Typography>
                       <Typography variant="body1" style={{ marginBottom: '10px' }}>Platform: {movie.platform}</Typography>
                       <Typography variant="body1" style={{ marginBottom: '10px' }}>Genre: {movie.genre}</Typography>
+                      <Typography variant="body1" style={{ marginBottom: '10px' }}>Cast: {movie.cast.join(', ')}</Typography>
                       <Box display="flex" justifyContent="flex-end" marginTop="10px">
                         <Dialog open={deleteIndex === index} onClose={() => setDeleteIndex(null)}>
                           <DialogContent style={{ maxWidth: '400px' }}>
