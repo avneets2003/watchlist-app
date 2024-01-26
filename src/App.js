@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Link, Routes, Route } from 'react-router-dom';
-import { TextField, MenuItem, Button, AppBar, Toolbar, Typography, Dialog, DialogContent, Card, CardContent, DialogActions, Box } from '@mui/material';
+import { TextField, MenuItem, Button, AppBar, Toolbar, Typography, Dialog, DialogContent, Card, CardContent, DialogActions, Box, Autocomplete, CircularProgress } from '@mui/material';
+import axios from 'axios';
 
 const platforms = [
   { value: 'Amazon Prime Video', label: 'Amazon Prime Video' },
@@ -23,23 +24,73 @@ const Form = () => {
   const [message, setMessage] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
   const [deleteIndex, setDeleteIndex] = useState(null);
+  const [searchResults, setSearchResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (event) => {
+  const debounce = (func, delay) => {
+    let timeoutId;
+    return function (...args) {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        func.apply(this, args);
+      }, delay);
+    };
+  };
+
+  const handleAutofill = debounce(async (query) => {
+    if (!query) {
+      setSearchResults([]);
+      return;
+    }
+    try {
+      setLoading(true);
+      const response = await axios.get(`https://api.themoviedb.org/3/search/movie?api_key=0d9082f38437d0ce2713e712e4b7fef4&query=${query}`);
+      const movieTitles = response.data.results.map(result => result.title);
+      setSearchResults(movieTitles);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching search results:', error);
+      setSearchResults([]);
+      setLoading(false);
+    }
+  }, 500);
+
+  const handleTitleChange = (event, value) => {
+    setTitle(value);
+    handleAutofill(value);
+  };
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    
-    // Check if any of the required fields are empty
+
     if (!title || !platform || !genre || !link) {
       alert('Please fill in all the fields.');
       return;
     }
 
-    // Handle form submission
-    const newMovie = { title, platform, genre, link };
-    setWatchlist([...watchlist, newMovie]);
-    setMessage(`${title} added to the watchlist.`);
-    setOpenDialog(true);
+    try {
+      const response = await axios.get(`https://api.themoviedb.org/3/search/movie?api_key=0d9082f38437d0ce2713e712e4b7fef4&query=${title}`);
+      if (response.data.results.length === 0) {
+        throw new Error('No movie found with that title.');
+      }
 
-    // Clear the form
+      const movieId = response.data.results[0].id;
+      const movieDetails = await axios.get(`https://api.themoviedb.org/3/movie/${movieId}?api_key=0d9082f38437d0ce2713e712e4b7fef4`);
+      const posterPath = movieDetails.data.poster_path;
+
+      const newMovie = { title, platform, genre, link, posterPath };
+      setWatchlist([...watchlist, newMovie]);
+      setMessage(`${title} added to the watchlist.`);
+      setOpenDialog(true);
+      
+      // Clear search results
+      setSearchResults([]);
+    } catch (error) {
+      console.error('Error adding movie to watchlist:', error);
+      alert('Failed to add movie to watchlist. Please try again.');
+    }
+
     setTitle('');
     setPlatform('');
     setGenre('');
@@ -78,13 +129,31 @@ const Form = () => {
             path="/"
             element={
               <form onSubmit={handleSubmit} style={{ maxWidth: '400px', margin: 'auto' }}>
-                <TextField
-                  label="Title"
-                  variant="outlined"
+                <Autocomplete
                   fullWidth
-                  margin="normal"
+                  freeSolo
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={handleTitleChange}
+                  options={searchResults}
+                  loading={loading} // Add the loading prop
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Movie Title"
+                      variant="outlined"
+                      margin="normal"
+                      InputProps={{
+                        ...params.InputProps,
+                        endAdornment: (
+                          <React.Fragment>
+                            {loading ? <CircularProgress color="inherit" size={20} /> : null} {/* Add loading icon */}
+                            {params.InputProps.endAdornment}
+                          </React.Fragment>
+                        ),
+                      }}
+                      onChange={(e) => handleTitleChange(e, e.target.value)}
+                    />
+                  )}
                 />
                 <TextField
                   select
@@ -147,6 +216,9 @@ const Form = () => {
                 {watchlist.map((movie, index) => (
                   <Card key={index} style={{ position: 'relative', width: '300px', margin: '10px' }}>
                     <CardContent>
+                      {movie.posterPath && (
+                        <img src={`https://image.tmdb.org/t/p/w500${movie.posterPath}`} alt={`${movie.title} Poster`} style={{ width: '100%', marginBottom: '10px' }} />
+                      )}
                       <Typography variant="h5" style={{ marginBottom: '10px' }}>
                         <a href={movie.link.startsWith('http') ? movie.link : `http://${movie.link}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', color: '#000' }}>{movie.title}</a>
                       </Typography>
